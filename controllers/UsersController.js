@@ -28,6 +28,16 @@ class UsersController {
     res.statusCode = 400;
     return res.send({ error: 'Error occured!' });
   }
+
+  static async getMe(req, res) {
+    const { user } = await authUtils.getUserByToken(req);
+    if (!user) {
+      res.statusCode = 401;
+      return res.send({ error: 'Unauthorized' });
+    }
+    res.statusCode = 200;
+    return res.send({ id: user._id, email: user.email });
+  }
 }
 
 export default UsersController;
