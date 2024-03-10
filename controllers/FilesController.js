@@ -53,6 +53,39 @@ class FilesController {
     delete newFile.localPath;
     return res.status(201).send(newFile);
   }
+
+  static async getShow(req, res) {
+    const { user } = await authUtils.getUserByToken(req);
+    if (!user) return res.status(401).send({ error: 'Unauthorized' });
+    const fileId = new ObjectID(req.params.id);
+    const file = await dbClient.filterBy('files', { _id: fileId, userId: user._id });
+    if (!file) return res.status(404).send({ error: 'Not found' });
+    file.id = file._id;
+    delete file._id;
+    return res.status(200).send(file);
+  }
+
+  static async getIndex(req, res) {
+    const { user } = await authUtils.getUserByToken(req);
+    if (!user) return res.status(401).send({ error: 'Unauthorized' });
+    const parentId = req.query.parentId || 0;
+    const page = req.query.page || 0;
+    const limit = 20;
+    const aggregate = [
+      { $skip: page * limit },
+      { $limit: limit },
+    ];
+    if (parentId !== 0) aggregate[2] = { $match: { parentId } };
+    const docs = await dbClient.db.collection('files').aggregate(aggregate).toArray();
+    return res.status(200).send(
+      docs.map((doc) => {
+        const newDoc = { ...doc, id: doc._id };
+        delete newDoc._id;
+        delete newDoc.localPath;
+        return newDoc;
+      }),
+    );
+  }
 }
 
 export default FilesController;
