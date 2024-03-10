@@ -2,6 +2,7 @@ import Bull from 'bull';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { ObjectID } from 'mongodb';
+import mime from 'mime-types';
 import dbClient from '../utils/db';
 import authUtils from '../utils/auth';
 
@@ -111,6 +112,27 @@ class FilesController {
     await dbClient.updateOne('files', { _id: fileId }, { isPublic: false });
     res.statusCode = 200;
     return res.send(file);
+  }
+
+  static async getFile(req, res) {
+    const fileId = new ObjectID(req.params.id);
+    const file = await dbClient.filterBy('files', { _id: fileId });
+    if (!file) return res.status(404).send({ error: 'Not found' });
+    if (!file.isPublic) {
+      const { user } = await authUtils.getUserByToken(req);
+      if (!user || user._id.toString() !== file.userId.toString()) {
+        return res.status(404).send({ error: 'Not found' });
+      }
+    }
+    if (file.type === 'folder') return res.status(400).send({ error: 'A folder doesn\'t have content' });
+    try {
+      const data = fs.readFileSync(file.localPath);
+      const mimetype = mime.lookup(file.name);
+      if (mimetype) res.setHeader('Content-Type', mimetype);
+      return res.status(200).send(data);
+    } catch (err) {
+      return res.status(404).send({ error: 'Not found' });
+    }
   }
 }
 
