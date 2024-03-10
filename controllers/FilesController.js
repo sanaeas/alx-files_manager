@@ -86,6 +86,32 @@ class FilesController {
       }),
     );
   }
+
+  static async putPublish(req, res) {
+    const { user } = await authUtils.getUserByToken(req);
+    if (!user) return res.status(401).send({ error: 'Unauthorized' });
+    const fileId = new ObjectID(req.params.id);
+    const file = await dbClient.filterBy('files', { userId: user._id, _id: fileId });
+    if (!file) return res.status(404).send({ error: 'Not found' });
+    file.isPublic = true;
+
+    await dbClient.updateOne('files', { _id: fileId }, { isPublic: true });
+    res.statusCode = 200;
+    return res.send(file);
+  }
+
+  static async putUnpublish(req, res) {
+    const { user } = await authUtils.getUserByToken(req);
+    if (!user) return res.status(401).send({ error: 'Unauthorized' });
+    const fileId = new ObjectID(req.params.id);
+    const file = await dbClient.filterBy('files', { userId: user._id, _id: fileId });
+    if (!file) return res.status(404).send({ error: 'Not found' });
+    file.isPublic = false;
+
+    await dbClient.updateOne('files', { _id: fileId }, { isPublic: false });
+    res.statusCode = 200;
+    return res.send(file);
+  }
 }
 
 export default FilesController;
